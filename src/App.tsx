@@ -1,42 +1,10 @@
-import { Suspense, useState, useRef, useEffect } from "react";
-import { Canvas } from "@react-three/fiber";
-import {
-  OrbitControls,
-  AsciiRenderer,
-  useGLTF,
-} from "@react-three/drei";
+import { useState, useEffect } from "react";
+import { useGLTF } from "@react-three/drei";
+import { ModelViewer } from "./components/ModelViewer";
+import { Sidebar } from "./components/Sidebar";
+import { PropertiesPanel } from "./components/PropertiesPanel";
+import { Menu, X } from "lucide-react";
 import { Button } from "./components/ui/button";
-import { Label } from "./components/ui/label";
-import { Slider } from "./components/ui/slider";
-import { Checkbox } from "./components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./components/ui/dialog";
-import { ErrorBoundary } from "./components/ErrorBoundary";
-import { Upload } from "lucide-react";
-
-interface ModelProps {
-  scale: number;
-  rotation: [number, number, number];
-  modelUrl: string;
-  position: [number, number, number];
-}
-
-function Model({
-  scale,
-  rotation,
-  modelUrl,
-  position,
-}: ModelProps) {
-  const { scene } = useGLTF(modelUrl);
-
-  return (
-    <primitive
-      object={scene}
-      scale={scale}
-      rotation={rotation}
-      position={position}
-    />
-  );
-}
 
 const defaultModels = [
   {
@@ -75,25 +43,28 @@ export default function App() {
   const [models, setModels] = useState(defaultModels);
   const [selectedModel, setSelectedModel] = useState(models[0].url);
   const [userScale, setUserScale] = useState(1);
-  const [creditsOpen, setCreditsOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showLeftSidebar, setShowLeftSidebar] = useState(true);
+  const [showRightSidebar, setShowRightSidebar] = useState(true);
 
-  // Clean up object URLs when component unmounts
+  // Mobile state check
   useEffect(() => {
-    return () => {
-      models.forEach(model => {
-        if (model.url.startsWith('blob:')) {
-          URL.revokeObjectURL(model.url);
-        }
-      });
+    const checkMobile = () => {
+      if (window.innerWidth < 768) {
+        setShowLeftSidebar(false);
+        setShowRightSidebar(false);
+      }
     };
-  }, [models]);
+
+    checkMobile(); // Check on mount
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const [asciiSettings, setAsciiSettings] = useState({
     resolution: 0.22,
     characters: " .:-=+*#%@",
     fgColor: "#ffffff",
-    bgColor: "#007BE5",
+    bgColor: "transparent",
     invert: false,
   });
 
@@ -102,14 +73,13 @@ export default function App() {
       resolution: 0.22,
       characters: " .:-=+*#%@",
       fgColor: "#ffffff",
-      bgColor: "#007BE5",
+      bgColor: "transparent",
       invert: false,
     });
     setUserScale(1);
   };
 
   const handleModelChange = (newModelUrl: string) => {
-    // Clear GLTF cache for the previous model to prevent loading issues
     if (selectedModel && selectedModel !== newModelUrl) {
       useGLTF.clear(selectedModel);
     }
@@ -120,7 +90,6 @@ export default function App() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.name.toLowerCase().endsWith('.glb') && !file.name.toLowerCase().endsWith('.gltf')) {
       alert("Please upload a .glb of .gltf file");
       return;
@@ -130,313 +99,126 @@ export default function App() {
     const newModel = {
       name: file.name.length > 20 ? file.name.substring(0, 17) + "..." : file.name,
       url: objectUrl,
-      baseScale: 1, // Default scale for uploaded models
+      baseScale: 1,
       position: [0, 0, 0] as [number, number, number],
     };
 
     setModels(prev => [...prev, newModel]);
     handleModelChange(objectUrl);
-
-    // Reset file input so the same file can be selected again if needed
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
   };
 
-  // Get the current model's base scale
-  const currentModel = models.find(
-    (model) => model.url === selectedModel,
-  );
+  // Cleanup object URLs
+  useEffect(() => {
+    return () => {
+      models.forEach(model => {
+        if (model.url.startsWith('blob:')) {
+          URL.revokeObjectURL(model.url);
+        }
+      });
+    };
+  }, [models]);
+
+  const currentModel = models.find(m => m.url === selectedModel);
   const finalScale = (currentModel?.baseScale || 1) * userScale;
 
   return (
-    <div className="w-full h-screen relative">
-      {/* Custom CSS for white slider */}
-      <style>{`
-        .slider-white [data-orientation="horizontal"] {
-          background: rgba(255, 255, 255, 0.2);
-          height: 6px !important;
-        }
-        .slider-white [data-orientation="horizontal"] [role="slider"] {
-          background: white !important;
-          border: 2px solid white !important;
-          border-color: white !important;
-          width: 18px !important;
-          height: 18px !important;
-        }
-        .slider-white [data-orientation="horizontal"] .bg-primary {
-          background: white !important;
-        }
-        .slider-white [data-orientation="horizontal"] [data-orientation="horizontal"] {
-          background: rgba(255, 255, 255, 0.2);
-          height: 6px !important;
-        }
-        .slider-white .slider-thumb {
-          background: white !important;
-          border: 2px solid white !important;
-          width: 18px !important;
-          height: 18px !important;
-        }
-        .slider-white [data-radix-collection-item] {
-          background: white !important;
-          border: 2px solid white !important;
-          width: 18px !important;
-          height: 18px !important;
-        }
-      `}</style>
+    <div className="flex w-full h-screen bg-[var(--background-secondary)] overflow-hidden">
 
-      {/* 3D Canvas - Full Screen */}
-      <ErrorBoundary>
-        <Canvas
-          camera={{
-            position: [0, 0, 3],
-            fov: 50,
-          }}
-          gl={{ preserveDrawingBuffer: true }}
-          onCreated={({ gl }) => {
-            gl.setSize(
-              gl.domElement.clientWidth,
-              gl.domElement.clientHeight,
-            );
-          }}
-        >
-          <ambientLight intensity={0.5} />
-          <directionalLight
-            position={[10, 10, 5]}
-            intensity={1}
-          />
-          <pointLight position={[-10, -10, -5]} intensity={0.5} />
-
-          <Suspense fallback={null}>
-            <Model
-              key={selectedModel} // Force re-mount when model changes
-              scale={finalScale}
-              rotation={[0, 0, 0]}
-              modelUrl={selectedModel}
-              position={currentModel?.position || [0, 0, 0]}
-            />
-          </Suspense>
-
-          {/* AsciiRenderer with explicit key to force re-render when settings change */}
-          <Suspense fallback={null}>
-            <AsciiRenderer
-              key={`${asciiSettings.resolution}-${asciiSettings.characters}-${asciiSettings.fgColor}-${asciiSettings.bgColor}-${asciiSettings.invert}`}
-              resolution={asciiSettings.resolution}
-              characters={asciiSettings.characters}
-              fgColor={asciiSettings.fgColor}
-              bgColor={asciiSettings.bgColor}
-              invert={asciiSettings.invert}
-            />
-          </Suspense>
-
-          <OrbitControls
-            autoRotate={true}
-            autoRotateSpeed={2}
-            enablePan={true}
-            enableZoom={true}
-            enableRotate={true}
-          />
-        </Canvas>
-      </ErrorBoundary>
-
-      {/* Left Panel - Model Selection */}
-      <div className="absolute left-14 top-1/2 -translate-y-1/2 z-10">
-        <div className="flex flex-col space-y-8">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            accept=".glb,.gltf"
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="text-left font-mono text-[15px] text-white/60 hover:text-white transition-opacity flex items-center gap-2 group"
-            style={{ fontFamily: "DM Mono, monospace" }}
-          >
-            <Upload size={14} className="group-hover:stroke-white" />
-            Upload File
-          </button>
-
-          <div className="w-8 h-[1px] bg-white/20 my-4" />
-
-          {models.map((model) => (
-            <button
-              key={model.url}
-              onClick={() => handleModelChange(model.url)}
-              className={`text-left font-mono text-[15px] transition-opacity hover:opacity-80 ${selectedModel === model.url
-                  ? "text-white opacity-100"
-                  : "text-white/60"
-                }`}
-              style={{ fontFamily: "DM Mono, monospace" }}
-            >
-              {model.name}
-            </button>
-          ))}
-        </div>
+      {/* Left Sidebar - Desktop */}
+      <div className={`${showLeftSidebar ? 'translate-x-0' : '-translate-x-full'} hidden md:block transition-transform duration-300 ease-in-out`}>
+        <Sidebar
+          models={models}
+          selectedModel={selectedModel}
+          onSelectModel={handleModelChange}
+          onUpload={handleFileUpload}
+        />
       </div>
 
-      {/* Right Panel - Controls - Vertically Centered */}
-      <div className="absolute right-8 top-1/2 -translate-y-1/2 z-10 p-4 space-y-8 min-w-[200px]">
-        {/* Presets */}
-        <div>
-          <Label
-            className="text-white text-[15px] mb-3 block font-mono"
-            style={{ fontFamily: "DM Mono, monospace" }}
-          >
-            Presets
-          </Label>
-          <div className="space-y-2">
-            {[
-              { name: ".:-=+*#%@", chars: " .:-=+*#%@" },
-              { name: ".-+*#", chars: " .-+*#" },
-            ].map((preset) => (
-              <Button
-                key={preset.name}
-                variant="outline"
-                size="sm"
-                className="w-full justify-start text-[15px] font-mono bg-white/20 border-white/30 text-white hover:bg-white/30"
-                onClick={() =>
-                  setAsciiSettings((prev) => ({
-                    ...prev,
-                    characters: preset.chars,
-                  }))
-                }
-                style={{ fontFamily: "DM Mono, monospace" }}
-              >
-                {preset.name}
-              </Button>
-            ))}
+      {/* Mobile Sidebar (Overlay) */}
+      {showLeftSidebar && (
+        <div className="md:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setShowLeftSidebar(false)}>
+          <div className="absolute left-0 top-0 bottom-0 w-64 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <Sidebar
+              models={models}
+              selectedModel={selectedModel}
+              onSelectModel={(url) => { handleModelChange(url); setShowLeftSidebar(false); }}
+              onUpload={handleFileUpload}
+            />
           </div>
         </div>
+      )}
 
-        {/* Resolution */}
-        <div>
-          <Label
-            className="text-white text-[15px] mb-3 block font-mono"
-            style={{ fontFamily: "DM Mono, monospace" }}
-          >
-            Resolution
-          </Label>
-          <Slider
-            value={[asciiSettings.resolution]}
-            onValueChange={([value]) =>
-              setAsciiSettings((prev) => ({
-                ...prev,
-                resolution: value,
-              }))
-            }
-            min={0.05}
-            max={0.5}
-            step={0.01}
-            className="w-full slider-white"
-          />
-          <div
-            className="text-white/60 text-[15px] mt-1 font-mono"
-            style={{ fontFamily: "DM Mono, monospace" }}
-          >
-            {asciiSettings.resolution.toFixed(3)}
-          </div>
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col relative min-w-0">
+
+        {/* Top Bar for Mobile / Toggle */}
+        <div className="absolute top-4 left-4 z-10 flex gap-2">
+          <Button variant="secondary" size="icon" onClick={() => setShowLeftSidebar(!showLeftSidebar)} className="shadow-sm border border-[var(--border-primary)] bg-[var(--background-primary)]">
+            {showLeftSidebar ? <X size={18} /> : <Menu size={18} />}
+          </Button>
         </div>
 
-        {/* Scale Control */}
-        <div>
-          <Label
-            className="text-white text-[15px] mb-3 block font-mono"
-            style={{ fontFamily: "DM Mono, monospace" }}
-          >
-            Scale
-          </Label>
-          <Slider
-            value={[userScale]}
-            onValueChange={([value]) => setUserScale(value)}
-            min={0.1}
-            max={3}
-            step={0.1}
-            className="w-full slider-white"
-          />
-          <div
-            className="text-white/60 text-[15px] mt-1 font-mono"
-            style={{ fontFamily: "DM Mono, monospace" }}
-          >
-            {userScale.toFixed(2)}
-          </div>
+        <div className="absolute top-4 right-4 z-10 md:hidden flex gap-2">
+          <Button variant="secondary" size="icon" onClick={() => setShowRightSidebar(!showRightSidebar)} className="shadow-sm border border-[var(--border-primary)] bg-[var(--background-primary)]">
+            {showRightSidebar ? <X size={18} /> : <Settings2Icon size={18} />}
+          </Button>
         </div>
 
-        {/* Invert Toggle */}
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="invert"
-            checked={asciiSettings.invert}
-            onCheckedChange={(checked) =>
-              setAsciiSettings((prev) => ({
-                ...prev,
-                invert: checked as boolean,
-              }))
-            }
-            className="border-white/30"
-          />
-          <Label
-            htmlFor="invert"
-            className="text-white text-[15px] font-mono"
-            style={{ fontFamily: "DM Mono, monospace" }}
-          >
-            Invert colors
-          </Label>
-        </div>
-
-        {/* Reset Button */}
-        <Button
-          onClick={resetSettings}
-          variant="outline"
-          className="w-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-[15px] font-mono"
-          style={{ fontFamily: "DM Mono, monospace" }}
-        >
-          Reset
-        </Button>
-
-        {/* Credits as underlined text - closer to Reset */}
-        <div className="-mt-4">
-          <Dialog open={creditsOpen} onOpenChange={setCreditsOpen}>
-            <DialogTrigger asChild>
-              <button
-                className="text-white/60 hover:text-white text-[15px] font-mono underline transition-colors"
-                style={{ fontFamily: "DM Mono, monospace" }}
-              >
-                Credits
-              </button>
-            </DialogTrigger>
-            <DialogContent className="bg-white/95 backdrop-blur-sm">
-              <DialogHeader>
-                <DialogTitle
-                  className="text-[15px] font-mono text-black"
-                  style={{ fontFamily: "DM Mono, monospace" }}
-                >
-                  Credits
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div
-                  className="text-[15px] font-mono text-black leading-relaxed"
-                  style={{ fontFamily: "DM Mono, monospace" }}
-                >
-                  <div>Shiba model by zixisun02</div>
-                  <div>Figma logo by vijay verma</div>
-                  <div>Computer model by tzeshi</div>
-                  <div>Crystal model by GenEugene</div>
-                  <div>Pothos (House Plant) by stevencmutter</div>
-                </div>
-                <div
-                  className="text-[15px] font-mono text-black mt-6"
-                  style={{ fontFamily: "DM Mono, monospace" }}
-                >
-                  Creative Commons License
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <ModelViewer
+          selectedModel={selectedModel}
+          modelPosition={currentModel?.position || [0, 0, 0]}
+          scale={finalScale}
+          asciiSettings={asciiSettings}
+        />
       </div>
+
+      {/* Right Sidebar - Desktop */}
+      <div className={`${showRightSidebar ? 'translate-x-0' : 'translate-x-full'} hidden md:block transition-transform duration-300 ease-in-out`}>
+        <PropertiesPanel
+          settings={asciiSettings}
+          scale={userScale}
+          onSettingsChange={setAsciiSettings}
+          onScaleChange={setUserScale}
+          onReset={resetSettings}
+        />
+      </div>
+
+      {/* Mobile Right Sidebar (Overlay) */}
+      {showRightSidebar && (
+        <div className="md:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setShowRightSidebar(false)}>
+          <div className="absolute right-0 top-0 bottom-0 w-[280px] shadow-2xl" onClick={e => e.stopPropagation()}>
+            <PropertiesPanel
+              settings={asciiSettings}
+              scale={userScale}
+              onSettingsChange={setAsciiSettings}
+              onScaleChange={setUserScale}
+              onReset={resetSettings}
+            />
+          </div>
+        </div>
+      )}
+
     </div>
+  );
+}
+
+function Settings2Icon({ size }: { size: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20 7h-9" />
+      <path d="M14 17H5" />
+      <circle cx="17" cy="17" r="3" />
+      <circle cx="7" cy="7" r="3" />
+    </svg>
   );
 }
