@@ -1,4 +1,4 @@
-import { Suspense, useState } from "react";
+import { Suspense, useState, useRef, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import {
   OrbitControls,
@@ -11,6 +11,7 @@ import { Slider } from "./components/ui/slider";
 import { Checkbox } from "./components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./components/ui/dialog";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { Upload } from "lucide-react";
 
 interface ModelProps {
   scale: number;
@@ -37,7 +38,7 @@ function Model({
   );
 }
 
-const models = [
+const defaultModels = [
   {
     name: "Logo",
     url: "https://danielcodepen.s3.us-east-1.amazonaws.com/figma.fbx.glb",
@@ -71,11 +72,22 @@ const models = [
 ];
 
 export default function App() {
-  const [selectedModel, setSelectedModel] = useState(
-    models[0].url,
-  );
+  const [models, setModels] = useState(defaultModels);
+  const [selectedModel, setSelectedModel] = useState(models[0].url);
   const [userScale, setUserScale] = useState(1);
   const [creditsOpen, setCreditsOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Clean up object URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      models.forEach(model => {
+        if (model.url.startsWith('blob:')) {
+          URL.revokeObjectURL(model.url);
+        }
+      });
+    };
+  }, [models]);
 
   const [asciiSettings, setAsciiSettings] = useState({
     resolution: 0.22,
@@ -102,6 +114,33 @@ export default function App() {
       useGLTF.clear(selectedModel);
     }
     setSelectedModel(newModelUrl);
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.glb') && !file.name.toLowerCase().endsWith('.gltf')) {
+      alert("Please upload a .glb of .gltf file");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    const newModel = {
+      name: file.name.length > 20 ? file.name.substring(0, 17) + "..." : file.name,
+      url: objectUrl,
+      baseScale: 1, // Default scale for uploaded models
+      position: [0, 0, 0] as [number, number, number],
+    };
+
+    setModels(prev => [...prev, newModel]);
+    handleModelChange(objectUrl);
+
+    // Reset file input so the same file can be selected again if needed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   // Get the current model's base scale
@@ -203,15 +242,32 @@ export default function App() {
       {/* Left Panel - Model Selection */}
       <div className="absolute left-14 top-1/2 -translate-y-1/2 z-10">
         <div className="flex flex-col space-y-8">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept=".glb,.gltf"
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="text-left font-mono text-[15px] text-white/60 hover:text-white transition-opacity flex items-center gap-2 group"
+            style={{ fontFamily: "DM Mono, monospace" }}
+          >
+            <Upload size={14} className="group-hover:stroke-white" />
+            Upload File
+          </button>
+
+          <div className="w-8 h-[1px] bg-white/20 my-4" />
+
           {models.map((model) => (
             <button
               key={model.url}
               onClick={() => handleModelChange(model.url)}
-              className={`text-left font-mono text-[15px] transition-opacity hover:opacity-80 ${
-                selectedModel === model.url
+              className={`text-left font-mono text-[15px] transition-opacity hover:opacity-80 ${selectedModel === model.url
                   ? "text-white opacity-100"
                   : "text-white/60"
-              }`}
+                }`}
               style={{ fontFamily: "DM Mono, monospace" }}
             >
               {model.name}
@@ -352,7 +408,7 @@ export default function App() {
             </DialogTrigger>
             <DialogContent className="bg-white/95 backdrop-blur-sm">
               <DialogHeader>
-                <DialogTitle 
+                <DialogTitle
                   className="text-[15px] font-mono text-black"
                   style={{ fontFamily: "DM Mono, monospace" }}
                 >
@@ -360,7 +416,7 @@ export default function App() {
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div 
+                <div
                   className="text-[15px] font-mono text-black leading-relaxed"
                   style={{ fontFamily: "DM Mono, monospace" }}
                 >
@@ -370,7 +426,7 @@ export default function App() {
                   <div>Crystal model by GenEugene</div>
                   <div>Pothos (House Plant) by stevencmutter</div>
                 </div>
-                <div 
+                <div
                   className="text-[15px] font-mono text-black mt-6"
                   style={{ fontFamily: "DM Mono, monospace" }}
                 >
