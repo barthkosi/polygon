@@ -122,10 +122,23 @@ export default function App() {
   const finalScale = (currentModel?.baseScale || 1) * userScale;
 
   return (
-    <div className="flex w-full h-screen bg-[var(--background-secondary)] overflow-hidden">
+    <div className="relative w-full h-screen bg-[var(--background-secondary)] overflow-hidden">
+
+      {/* 3D Viewer - Background / Full Screen */}
+      <div className="absolute inset-0 z-0">
+        <ModelViewer
+          selectedModel={selectedModel}
+          modelPosition={currentModel?.position || [0, 0, 0]}
+          scale={finalScale}
+          asciiSettings={asciiSettings}
+        />
+      </div>
 
       {/* Left Sidebar - Desktop */}
-      <div className={`${showLeftSidebar ? 'translate-x-0' : '-translate-x-full'} hidden md:block transition-transform duration-300 ease-in-out`}>
+      <div
+        className={`absolute left-0 top-0 bottom-0 z-20 w-64 transform transition-transform duration-300 ease-in-out ${showLeftSidebar ? 'translate-x-0' : '-translate-x-full'
+          } hidden md:block`}
+      >
         <Sidebar
           models={models}
           selectedModel={selectedModel}
@@ -148,32 +161,28 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col relative min-w-0">
+      {/* Main Content Area - Overlays */}
+      <div className="absolute inset-0 z-10 pointer-events-none">
 
         {/* Top Bar for Mobile / Toggle */}
-        <div className="absolute top-4 left-4 z-10 flex gap-2">
+        <div className="absolute top-4 left-4 pointer-events-auto flex gap-2">
           <Button variant="secondary" size="icon" onClick={() => setShowLeftSidebar(!showLeftSidebar)} className="shadow-sm border border-[var(--border-primary)] bg-[var(--background-primary)]">
             {showLeftSidebar ? <X size={18} /> : <Menu size={18} />}
           </Button>
         </div>
 
-        <div className="absolute top-4 right-4 z-10 md:hidden flex gap-2">
+        <div className="absolute top-4 right-4 md:hidden pointer-events-auto flex gap-2">
           <Button variant="secondary" size="icon" onClick={() => setShowRightSidebar(!showRightSidebar)} className="shadow-sm border border-[var(--border-primary)] bg-[var(--background-primary)]">
             {showRightSidebar ? <X size={18} /> : <Settings2Icon size={18} />}
           </Button>
         </div>
-
-        <ModelViewer
-          selectedModel={selectedModel}
-          modelPosition={currentModel?.position || [0, 0, 0]}
-          scale={finalScale}
-          asciiSettings={asciiSettings}
-        />
       </div>
 
       {/* Right Sidebar - Desktop */}
-      <div className={`${showRightSidebar ? 'translate-x-0' : 'translate-x-full'} hidden md:block transition-transform duration-300 ease-in-out`}>
+      <div
+        className={`absolute right-0 top-0 bottom-0 z-20 w-[280px] transform transition-transform duration-300 ease-in-out ${showRightSidebar ? 'translate-x-0' : 'translate-x-full'
+          } hidden md:block`}
+      >
         <PropertiesPanel
           settings={asciiSettings}
           scale={userScale}
