@@ -143,11 +143,11 @@ export function PropertiesPanel({
                             <DialogTitle className="text-[var(--content-primary)]">Credits</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-2 text-sm text-[var(--content-secondary)] p-2">
-                            <p>Shiba model by zixisun02</p>
-                            <p>Figma logo by vijay verma</p>
                             <p>Computer model by tzeshi</p>
-                            <p>Crystal model by GenEugene</p>
                             <p>Pothos (House Plant) by stevencmutter</p>
+                            <p>Shiba model by zixisun02</p>
+                            <p>Crystal model by GenEugene</p>
+
                             <div className="mt-4 pt-4 border-t border-[var(--border-secondary)] text-xs">
                                 <p>Creative Commons License</p>
                             </div>
