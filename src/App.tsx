@@ -8,12 +8,6 @@ import { Button } from "./components/ui/button";
 
 const defaultModels = [
   {
-    name: "Logo",
-    url: "https://danielcodepen.s3.us-east-1.amazonaws.com/figma.fbx.glb",
-    baseScale: 0.8,
-    position: [0, -0.2, 0] as [number, number, number],
-  },
-  {
     name: "Computer",
     url: "https://danielcodepen.s3.us-east-1.amazonaws.com/apple_macintosh.glb",
     baseScale: 0.05,
