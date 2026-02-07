@@ -20,7 +20,7 @@ export function Sidebar({ models, selectedModel, onSelectModel, onUpload }: Side
     return (
         <div className="flex flex-col h-full bg-[var(--background-secondary)] border-r border-[var(--border-secondary)] w-60 shrink-0">
             <div className="p-4 border-b border-[var(--border-primary)]">
-                <h2 className="text-[var(--content-primary)] font-semibold text-sm tracking-tight flex items-center gap-2">
+                <h2 className="text-[var(--content-primary)] label-l tracking-tight flex items-center gap-2">
                     <Box size={16} />
                     Assets
                 </h2>
@@ -28,7 +28,7 @@ export function Sidebar({ models, selectedModel, onSelectModel, onUpload }: Side
 
             <div className="flex-1 overflow-y-auto py-2">
                 <div className="px-2 space-y-0.5">
-                    <div className="px-2 py-1.5 text-[var(--content-secondary)] text-xs font-medium uppercase tracking-wider">
+                    <div className="px-2 py-1.5 text-[var(--content-secondary)] label-s font-medium uppercase tracking-wider">
                         Library
                     </div>
                     {models.map((model) => (
