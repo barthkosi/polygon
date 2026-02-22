@@ -18,26 +18,28 @@ export function Sidebar({ models, selectedModel, onSelectModel, onUpload }: Side
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     return (
-        <div className="flex flex-col h-full bg-[var(--background-secondary)] border-r border-[var(--border-secondary)] w-60 shrink-0">
+     <div className="h-full w-[280px] p-3">
+        <div className="w-full h-full flex flex-col bg-[var(--background-tertiary)] rounded-[24px] border-[1px] border-[var(--border-primary)]">
             <div className="p-4 border-b border-[var(--border-primary)]">
-                <h2 className="text-[var(--content-primary)] label-l tracking-tight flex items-center gap-2">
-                    <Box size={16} />
+                <h2 className="h6 text-[var(--content-primary) flex items-center gap-2">
+                   <Box size={24} />
                     Assets
                 </h2>
             </div>
 
             <div className="flex-1 overflow-y-auto py-2">
-                <div className="px-2 space-y-0.5">
-                    <div className="px-2 py-1.5 text-[var(--content-secondary)] label-s font-medium uppercase tracking-wider">
+                <div className="flex flex-col p-2 gap-2">
+                    <div className="px-3 text-[var(--content-secondary)] label-xs">
                         Library
                     </div>
+                    <div className="flex flex-col gap-0.5">
                     {models.map((model) => (
                         <button
                             key={model.url}
                             onClick={() => onSelectModel(model.url)}
-                            className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center gap-2
+                            className={`w-full text-left px-3 py-2 label-s rounded-[12px] transition-colors flex items-center
                 ${selectedModel === model.url
-                                    ? "bg-[var(--background-selected)] text-[var(--content-primary)] font-medium"
+                                    ? "bg-[var(--background-secondary)] text-[var(--content-primary)]"
                                     : "text-[var(--content-secondary)] hover:bg-[var(--background-hover)] hover:text-[var(--content-primary)]"
                                 }
               `}
@@ -45,10 +47,12 @@ export function Sidebar({ models, selectedModel, onSelectModel, onUpload }: Side
                             {model.name}
                         </button>
                     ))}
+                    </div>
+
                 </div>
             </div>
 
-            <div className="p-4 border-t border-[var(--border-primary)] bg-[var(--background-secondary)]">
+            <div className="flex p-4 border-t border-[var(--border-primary)]">
                 <input
                     type="file"
                     ref={fileInputRef}
@@ -58,7 +62,7 @@ export function Sidebar({ models, selectedModel, onSelectModel, onUpload }: Side
                 />
                 <Button
                     variant="outline"
-                    className="w-full justify-center gap-2 bg-[var(--background-primary)] hover:bg-[var(--background-hover)] text-[var(--content-primary)] border-[var(--border-primary)] py-5"
+                    className="w-full justify-center gap-2 rounded-[99px] bg-[var(--background-primary)] hover:bg-[var(--background-hover)] text-[var(--content-primary)] border-[var(--border-primary)] py-5"
                     onClick={() => fileInputRef.current?.click()}
                 >
                     <Upload size={16} />
@@ -66,5 +70,6 @@ export function Sidebar({ models, selectedModel, onSelectModel, onUpload }: Side
                 </Button>
             </div>
         </div>
+      </div>
     );
 }

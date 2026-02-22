@@ -40,10 +40,11 @@ export function PropertiesPanel({
     };
 
     return (
-        <div className="flex flex-col h-full bg-[var(--background-secondary)] border-l border-[var(--border-secondary)] w-[280px] shrink-0">
+      <div className="h-full w-[280px] p-3">
+         <div className=" w-full h-full flex flex-col bg-[var(--background-tertiary)] rounded-[24px] border-[1px] border-[var(--border-primary)]">
             <div className="p-4 border-b border-[var(--border-primary)] flex justify-between items-center">
-                <h2 className="text-[var(--content-primary)] font-semibold text-sm tracking-tight flex items-center gap-2">
-                    <Settings2 size={16} />
+                <h2 className="h6 text-[var(--content-primary) flex items-center gap-2">
+                    <Settings2 size={24} />
                     Properties
                 </h2>
                 <Button
@@ -53,7 +54,7 @@ export function PropertiesPanel({
                     className="h-6 w-6 text-[var(--content-secondary)] hover:text-[var(--content-primary)]"
                     title="Reset Settings"
                 >
-                    <RotateCcw size={14} />
+                    <RotateCcw size={16} />
                 </Button>
             </div>
 
@@ -61,7 +62,7 @@ export function PropertiesPanel({
 
                 {/* Presets */}
                 <div className="space-y-3">
-                    <Label className="text-[var(--content-secondary)] text-xs uppercase font-semibold">Presets</Label>
+                    <Label className="text-[var(--content-secondary)]">Presets</Label>
                     <div className="grid grid-cols-2 gap-2">
                         {presets.map((preset) => (
                             <Button
@@ -69,7 +70,7 @@ export function PropertiesPanel({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => updateSetting("characters", preset.chars)}
-                                className={`text-xs justify-start border-[var(--border-primary)]
+                                className={`text-xs justify-start rounded-[12px] border-[var(--border-primary)]
                     ${settings.characters === preset.chars
                                         ? "bg-[var(--background-selected)] text-[var(--content-primary)] border-[var(--border-focus)]"
                                         : "bg-[var(--background-primary)] text-[var(--content-secondary)]"
@@ -84,9 +85,9 @@ export function PropertiesPanel({
                 <div className="h-[1px] bg-[var(--border-secondary)]" />
 
                 {/* Resolution */}
-                <div className="space-y-4">
+                <div className="flex flex-col gap-3">
                     <div className="flex justify-between">
-                        <Label className="text-[var(--content-secondary)] text-xs uppercase font-semibold">Resolution</Label>
+                        <Label>Resolution</Label>
                         <span className="text-xs text-[var(--content-primary)] font-mono">{settings.resolution.toFixed(2)}</span>
                     </div>
                     <Slider
@@ -100,9 +101,9 @@ export function PropertiesPanel({
                 </div>
 
                 {/* Scale */}
-                <div className="space-y-4">
+                <div className="flex flex-col gap-3">
                     <div className="flex justify-between">
-                        <Label className="text-[var(--content-secondary)] text-xs uppercase font-semibold">Scale</Label>
+                        <Label>Scale</Label>
                         <span className="text-xs text-[var(--content-primary)] font-mono">{scale.toFixed(1)}x</span>
                     </div>
                     <Slider
@@ -115,26 +116,26 @@ export function PropertiesPanel({
                     />
                 </div>
 
-                <div className="h-[1px] bg-[var(--border-secondary)]" />
+                <div className="h-[1px]" />
 
                 {/* Color Toggles */}
                 <div className="flex items-center justify-between">
-                    <Label htmlFor="invert" className="text-[var(--content-primary)] text-sm cursor-pointer">Invert Colors</Label>
+                    <Label htmlFor="invert" className="text-[var(--content-primary)] cursor-pointer">Invert Colors</Label>
                     <Checkbox
                         id="invert"
                         checked={settings.invert}
                         onCheckedChange={(checked: boolean) => updateSetting("invert", checked)}
-                        className="border-[var(--border-active)] data-[state=checked]:bg-[var(--brand-500)] data-[state=checked]:border-[var(--brand-500)]"
+                        className="border-[var(--border-primary)] data-[state=checked]:bg-[var(--brand-500)] data-[state=checked]:border-[var(--brand-500)]"
                     />
                 </div>
             </div>
 
             {/* Footer / Credits */}
-            <div className="p-4 border-t border-[var(--border-primary)] bg-[var(--background-secondary)]">
+            <div className="flex p-4 border-t border-[var(--border-primary)]">
                 <Dialog>
                     <DialogTrigger asChild>
-                        <Button variant="ghost" className="w-full justify-start gap-2 text-[var(--content-secondary)] hover:text-[var(--content-primary)] text-xs">
-                            <Info size={14} />
+                        <Button variant="ghost" className="w-full flex flex-row justify-start gap-2 text-[var(--content-secondary)] hover:text-[var(--content-primary)] text-xs">
+                            <Info size={16} />
                             About & Credits
                         </Button>
                     </DialogTrigger>
@@ -142,19 +143,20 @@ export function PropertiesPanel({
                         <DialogHeader>
                             <DialogTitle className="text-[var(--content-primary)]">Credits</DialogTitle>
                         </DialogHeader>
-                        <div className="space-y-2 text-sm text-[var(--content-secondary)] p-2">
+                        <div className="flex flex-col gap-2 text-sm text-[var(--content-secondary)] p-2">
                             <p>Computer model by tzeshi</p>
                             <p>Pothos (House Plant) by stevencmutter</p>
                             <p>Shiba model by zixisun02</p>
                             <p>Crystal model by GenEugene</p>
 
                             <div className="mt-4 pt-4 border-t border-[var(--border-secondary)] text-xs">
-                                <p>Creative Commons License</p>
+                                <p className="label-xs">Made by Barth</p>
                             </div>
                         </div>
                     </DialogContent>
                 </Dialog>
             </div>
-        </div>
+         </div>
+      </div>
     );
 }

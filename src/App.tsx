@@ -116,7 +116,7 @@ export default function App() {
   const finalScale = (currentModel?.baseScale || 1) * userScale;
 
   return (
-    <div className="relative w-full h-screen bg-[var(--background-secondary)] overflow-hidden">
+    <div className="relative w-full h-screen bg-[var(--background-primary)] overflow-hidden">
 
       {/* 3D Viewer - Background / Full Screen */}
       <div className="absolute inset-0 z-0">
@@ -159,17 +159,24 @@ export default function App() {
       <div className="absolute inset-0 z-10 pointer-events-none">
 
         {/* Top Bar for Mobile / Toggle */}
-        <div className="absolute top-4 left-4 pointer-events-auto flex gap-2">
-          <Button variant="secondary" size="icon" onClick={() => setShowLeftSidebar(!showLeftSidebar)} className="shadow-sm border border-[var(--border-primary)] bg-[var(--background-primary)]">
-            {showLeftSidebar ? <X size={18} /> : <Menu size={18} />}
-          </Button>
+        <div className="absolute top-4 left-4 md:hidden pointer-events-auto flex flex-row gap-2 border border-[var(--border-primary)] bg-[var(--background-primary)] rounded-[12px] p-1 pl-3">
+           <h2 className="h6 text-[var(--content-primary) flex items-center gap-2 select-none">
+            Assets
+           </h2>
+           <Button variant="secondary" size="icon" onClick={() => setShowLeftSidebar(!showLeftSidebar)} className="border border-[var(--border-primary)]">
+             {showLeftSidebar ? <X size={18} /> : <Menu size={18} />}
+           </Button>
         </div>
 
-        <div className="absolute top-4 right-4 md:hidden pointer-events-auto flex gap-2">
-          <Button variant="secondary" size="icon" onClick={() => setShowRightSidebar(!showRightSidebar)} className="shadow-sm border border-[var(--border-primary)] bg-[var(--background-primary)]">
+        <div className="absolute top-4 right-4 md:hidden pointer-events-auto flex flex-row gap-2 border border-[var(--border-primary)] bg-[var(--background-primary)] rounded-[12px] p-1 pl-3">
+           <h2 className="h6 text-[var(--content-primary) flex items-center gap-2 select-none">
+            Properties
+           </h2>
+          <Button variant="secondary" size="icon" onClick={() => setShowRightSidebar(!showRightSidebar)} className="border border-[var(--border-primary)] bg-[var(--background-primary)]">
             {showRightSidebar ? <X size={18} /> : <Settings2Icon size={18} />}
           </Button>
         </div>
+
       </div>
 
       {/* Right Sidebar - Desktop */}
