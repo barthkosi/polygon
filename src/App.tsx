@@ -5,6 +5,7 @@ import { Sidebar } from "./components/Sidebar";
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { Menu, X } from "lucide-react";
 import { Button } from "./components/ui/button";
+import { Agentation } from "agentation";
 
 const defaultModels = [
   {
@@ -160,18 +161,18 @@ export default function App() {
 
         {/* Top Bar for Mobile / Toggle */}
         <div className="absolute top-4 left-4 md:hidden pointer-events-auto flex flex-row gap-2 border border-[var(--border-primary)] bg-[var(--background-primary)] rounded-[12px] p-1 pl-3">
-           <h2 className="h6 text-[var(--content-primary) flex items-center gap-2 select-none">
+          <h2 className="h6 text-[var(--content-primary) flex items-center gap-2 select-none">
             Assets
-           </h2>
-           <Button variant="secondary" size="icon" onClick={() => setShowLeftSidebar(!showLeftSidebar)} className="border border-[var(--border-primary)]">
-             {showLeftSidebar ? <X size={18} /> : <Menu size={18} />}
-           </Button>
+          </h2>
+          <Button variant="secondary" size="icon" onClick={() => setShowLeftSidebar(!showLeftSidebar)} className="border border-[var(--border-primary)]">
+            {showLeftSidebar ? <X size={18} /> : <Menu size={18} />}
+          </Button>
         </div>
 
         <div className="absolute top-4 right-4 md:hidden pointer-events-auto flex flex-row gap-2 border border-[var(--border-primary)] bg-[var(--background-primary)] rounded-[12px] p-1 pl-3">
-           <h2 className="h6 text-[var(--content-primary) flex items-center gap-2 select-none">
+          <h2 className="h6 text-[var(--content-primary) flex items-center gap-2 select-none">
             Properties
-           </h2>
+          </h2>
           <Button variant="secondary" size="icon" onClick={() => setShowRightSidebar(!showRightSidebar)} className="border border-[var(--border-primary)] bg-[var(--background-primary)]">
             {showRightSidebar ? <X size={18} /> : <Settings2Icon size={18} />}
           </Button>
@@ -208,6 +209,7 @@ export default function App() {
         </div>
       )}
 
+      {import.meta.env.DEV && <Agentation />}
     </div>
   );
 }
