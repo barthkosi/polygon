@@ -60,7 +60,10 @@
             "@types/webxr": "^0.5.24",
             "@vitejs/plugin-react-swc": "^3.5.0",
             "agentation": "^2.2.1",
-            "vite": "^7.3.1"
+            "sharp": "^0.34.5",
+            "vite": "^7.3.1",
+            "vite-plugin-pwa": "^1.2.0",
+            "workbox-window": "^7.4.0"
       },
       "scripts": {
             "dev": "vite",
