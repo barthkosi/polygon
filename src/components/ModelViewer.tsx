@@ -96,7 +96,7 @@ export function ModelViewer({
     }
 
     return (
-        <div className="w-full h-full relative bg-[var(--background-tertiary)] overflow-hidden">
+        <div className="w-full h-full relative bg-[var(--background-model)] overflow-hidden">
             {isLoading && <LoadingSpinner />}
             <ErrorBoundary>
                 <Canvas

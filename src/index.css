@@ -299,6 +299,7 @@
 
   /* Background Colors */
   --background-primary: var(--white);
+  --background-model: var(--neutral-150);
   --background-secondary: var(--neutral-50);
   --background-tertiary: var(--neutral-100);
   --background-hover: var(--neutral-100);
@@ -364,6 +365,7 @@
 
     /* Background Colors */
     --background-primary: var(--neutral-900);
+    --background-model: var(--neutral-900);
     --background-secondary: var(--neutral-850);
     --background-tertiary: var(--neutral-900);
     --background-hover: var(--neutral-800);
