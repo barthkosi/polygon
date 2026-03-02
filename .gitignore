@@ -36,3 +36,6 @@ lerna-debug.log*
 
 # Vercel
 .vercel
+dev-dist/registerSW.js
+dev-dist/sw.js
+dev-dist/workbox-ca84f546.js
