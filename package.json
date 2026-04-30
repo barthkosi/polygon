@@ -1,5 +1,5 @@
 {
-      "name": "3D ASCII Model Viewer",
+      "name": "polygon-3d-ascii",
       "version": "0.1.0",
       "private": true,
       "dependencies": {
