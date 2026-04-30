@@ -6,6 +6,7 @@ import { PropertiesPanel } from "./components/PropertiesPanel";
 import { Menu } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Agentation } from "agentation";
+import { motion, AnimatePresence } from "motion/react";
 
 const defaultModels = [
   {
@@ -154,19 +155,35 @@ export default function App() {
       </div>
 
       {/* Mobile Sidebar (Overlay) */}
-      {showLeftSidebar && (
-        <div className="md:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setShowLeftSidebar(false)}>
-          <div className="absolute left-0 top-0 bottom-0 w-[280px] shadow-2xl" onClick={e => e.stopPropagation()}>
-            <Sidebar
-              models={models}
-              selectedModel={selectedModel}
-              onSelectModel={(url) => { handleModelChange(url); setShowLeftSidebar(false); }}
-              onUpload={handleFileUpload}
-              onClose={() => setShowLeftSidebar(false)}
-            />
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {showLeftSidebar && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="md:hidden fixed inset-0 z-50 bg-black/50" 
+            onClick={() => setShowLeftSidebar(false)}
+          >
+            <motion.div 
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
+              className="absolute left-0 top-0 bottom-0 w-[280px] shadow-2xl" 
+              onClick={e => e.stopPropagation()}
+            >
+              <Sidebar
+                models={models}
+                selectedModel={selectedModel}
+                onSelectModel={(url) => { handleModelChange(url); setShowLeftSidebar(false); }}
+                onUpload={handleFileUpload}
+                onClose={() => setShowLeftSidebar(false)}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content Area - Overlays */}
       <div className="absolute inset-0 z-10 pointer-events-none">
@@ -221,21 +238,37 @@ export default function App() {
       </div>
 
       {/* Mobile Right Sidebar (Overlay) */}
-      {showRightSidebar && (
-        <div className="md:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setShowRightSidebar(false)}>
-          <div className="absolute right-0 top-0 bottom-0 w-[280px] shadow-2xl" onClick={e => e.stopPropagation()}>
-            <PropertiesPanel
-              settings={asciiSettings}
-              scale={userScale}
-              onSettingsChange={setAsciiSettings}
-              onScaleChange={setUserScale}
-              onReset={resetSettings}
-              onExport={handleExport}
-              onClose={() => setShowRightSidebar(false)}
-            />
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {showRightSidebar && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="md:hidden fixed inset-0 z-50 bg-black/50" 
+            onClick={() => setShowRightSidebar(false)}
+          >
+            <motion.div 
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
+              className="absolute right-0 top-0 bottom-0 w-[280px] shadow-2xl" 
+              onClick={e => e.stopPropagation()}
+            >
+              <PropertiesPanel
+                settings={asciiSettings}
+                scale={userScale}
+                onSettingsChange={setAsciiSettings}
+                onScaleChange={setUserScale}
+                onReset={resetSettings}
+                onExport={handleExport}
+                onClose={() => setShowRightSidebar(false)}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {import.meta.env.DEV && <Agentation />}
     </div>
