@@ -151,10 +151,16 @@ export const ModelViewer = forwardRef<
                                     ctx.fillText(line, 0, i * charHeight);
                                 });
 
-                                const link = document.createElement("a");
-                                link.download = `polygon-ascii-${new Date().getTime()}.png`;
-                                link.href = canvas.toDataURL("image/png");
-                                link.click();
+                                canvas.toBlob((blob) => {
+                                    if (blob) {
+                                        const url = URL.createObjectURL(blob);
+                                        const link = document.createElement("a");
+                                        link.download = "polygon-ascii.png";
+                                        link.href = url;
+                                        link.click();
+                                        URL.revokeObjectURL(url);
+                                    }
+                                }, "image/png");
                                 return;
                             }
                         }
@@ -164,10 +170,16 @@ export const ModelViewer = forwardRef<
 
             // Fallback to standard GL canvas capture (real view)
             if (glContext) {
-                const link = document.createElement("a");
-                link.download = `polygon-${new Date().getTime()}.png`;
-                link.href = glContext.domElement.toDataURL("image/png");
-                link.click();
+                glContext.domElement.toBlob((blob) => {
+                    if (blob) {
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.download = "polygon.png";
+                        link.href = url;
+                        link.click();
+                        URL.revokeObjectURL(url);
+                    }
+                }, "image/png");
             }
         },
     }));
