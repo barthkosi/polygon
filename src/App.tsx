@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useGLTF } from "@react-three/drei";
 import { ModelViewer } from "./components/ModelViewer";
 import { Sidebar } from "./components/Sidebar";
 import { PropertiesPanel } from "./components/PropertiesPanel";
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Agentation } from "agentation";
 
@@ -40,6 +40,11 @@ export default function App() {
   const [userScale, setUserScale] = useState(1);
   const [showLeftSidebar, setShowLeftSidebar] = useState(true);
   const [showRightSidebar, setShowRightSidebar] = useState(true);
+  const modelViewerRef = useRef<{ exportImage: () => void }>(null);
+
+  const handleExport = () => {
+    modelViewerRef.current?.exportImage();
+  };
 
   // Mobile state check
   useEffect(() => {
@@ -56,6 +61,7 @@ export default function App() {
   }, []);
 
   const [asciiSettings, setAsciiSettings] = useState({
+    enabled: true,
     resolution: 0.22,
     characters: " .:-=+*#%@",
     fgColor: "#ffffff",
@@ -65,6 +71,7 @@ export default function App() {
 
   const resetSettings = () => {
     setAsciiSettings({
+      enabled: true,
       resolution: 0.22,
       characters: " .:-=+*#%@",
       fgColor: "#ffffff",
@@ -122,6 +129,7 @@ export default function App() {
       {/* 3D Viewer - Background / Full Screen */}
       <div className="absolute inset-0 z-0">
         <ModelViewer
+          ref={modelViewerRef}
           selectedModel={selectedModel}
           modelPosition={currentModel?.position || [0, 0, 0]}
           scale={finalScale}
@@ -131,7 +139,7 @@ export default function App() {
 
       {/* Left Sidebar - Desktop */}
       <div
-        className={`absolute left-0 top-0 bottom-0 z-20 w-64 transform transition-transform duration-300 ease-in-out ${showLeftSidebar ? 'translate-x-0' : '-translate-x-full'
+        className={`absolute left-0 top-0 bottom-0 z-20 w-[280px] transform transition-transform duration-300 ease-in-out ${showLeftSidebar ? 'translate-x-0' : '-translate-x-full'
           } hidden md:block`}
       >
         <Sidebar
@@ -139,18 +147,20 @@ export default function App() {
           selectedModel={selectedModel}
           onSelectModel={handleModelChange}
           onUpload={handleFileUpload}
+          onClose={() => setShowLeftSidebar(false)}
         />
       </div>
 
       {/* Mobile Sidebar (Overlay) */}
       {showLeftSidebar && (
         <div className="md:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setShowLeftSidebar(false)}>
-          <div className="absolute left-0 top-0 bottom-0 w-64 shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="absolute left-0 top-0 bottom-0 w-[280px] shadow-2xl" onClick={e => e.stopPropagation()}>
             <Sidebar
               models={models}
               selectedModel={selectedModel}
               onSelectModel={(url) => { handleModelChange(url); setShowLeftSidebar(false); }}
               onUpload={handleFileUpload}
+              onClose={() => setShowLeftSidebar(false)}
             />
           </div>
         </div>
@@ -159,23 +169,35 @@ export default function App() {
       {/* Main Content Area - Overlays */}
       <div className="absolute inset-0 z-10 pointer-events-none">
 
-        {/* Top Bar for Mobile / Toggle */}
-        <div className="absolute top-4 left-4 md:hidden pointer-events-auto flex flex-row gap-2 border border-[var(--border-primary)] bg-[var(--background-primary)] rounded-[12px] p-1 pl-3">
-          <h2 className="h6 text-[var(--content-primary) flex items-center gap-2 select-none">
-            Assets
-          </h2>
-          <Button variant="secondary" size="icon" onClick={() => setShowLeftSidebar(!showLeftSidebar)} className="border border-[var(--border-primary)]">
-            {showLeftSidebar ? <X size={18} /> : <Menu size={18} />}
-          </Button>
+        {/* Toggle Buttons - Visible when sidebars are closed or on mobile */}
+        <div 
+          className={`absolute top-4 left-4 pointer-events-auto transition-all duration-300 ${
+            showLeftSidebar ? 'opacity-0 -translate-x-full pointer-events-none' : 'opacity-100 translate-x-0'
+          }`}
+        >
+          <div className="flex flex-row gap-2 border border-[var(--border-primary)] bg-[var(--background-primary)] rounded-[12px] p-1 pl-3 shadow-lg">
+            <h2 className="h6 text-[var(--content-primary)] flex items-center gap-2 select-none">
+              Assets
+            </h2>
+            <Button variant="secondary" size="icon" onClick={() => setShowLeftSidebar(true)} className="border border-[var(--border-primary)] bg-[var(--background-primary)]">
+              <Menu size={18} />
+            </Button>
+          </div>
         </div>
 
-        <div className="absolute top-4 right-4 md:hidden pointer-events-auto flex flex-row gap-2 border border-[var(--border-primary)] bg-[var(--background-primary)] rounded-[12px] p-1 pl-3">
-          <h2 className="h6 text-[var(--content-primary) flex items-center gap-2 select-none">
-            Properties
-          </h2>
-          <Button variant="secondary" size="icon" onClick={() => setShowRightSidebar(!showRightSidebar)} className="border border-[var(--border-primary)] bg-[var(--background-primary)]">
-            {showRightSidebar ? <X size={18} /> : <Settings2Icon size={18} />}
-          </Button>
+        <div 
+          className={`absolute top-4 right-4 pointer-events-auto transition-all duration-300 ${
+            showRightSidebar ? 'opacity-0 translate-x-full pointer-events-none' : 'opacity-100 translate-x-0'
+          }`}
+        >
+          <div className="flex flex-row gap-2 border border-[var(--border-primary)] bg-[var(--background-primary)] rounded-[12px] p-1 pl-3 shadow-lg">
+            <h2 className="h6 text-[var(--content-primary)] flex items-center gap-2 select-none">
+              Properties
+            </h2>
+            <Button variant="secondary" size="icon" onClick={() => setShowRightSidebar(true)} className="border border-[var(--border-primary)] bg-[var(--background-primary)]">
+              <Settings2Icon size={18} />
+            </Button>
+          </div>
         </div>
 
       </div>
@@ -191,6 +213,8 @@ export default function App() {
           onSettingsChange={setAsciiSettings}
           onScaleChange={setUserScale}
           onReset={resetSettings}
+          onExport={handleExport}
+          onClose={() => setShowRightSidebar(false)}
         />
       </div>
 
@@ -204,6 +228,8 @@ export default function App() {
               onSettingsChange={setAsciiSettings}
               onScaleChange={setUserScale}
               onReset={resetSettings}
+              onExport={handleExport}
+              onClose={() => setShowRightSidebar(false)}
             />
           </div>
         </div>

@@ -3,9 +3,10 @@ import { Label } from "./ui/label";
 import { Slider } from "./ui/slider";
 import { Checkbox } from "./ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
-import { Settings2, RotateCcw, Info } from "lucide-react";
+import { Settings2, RotateCcw, Info, Download, X } from "lucide-react";
 
 interface AsciiSettings {
+    enabled: boolean;
     resolution: number;
     characters: string;
     fgColor: string;
@@ -19,6 +20,8 @@ interface PropertiesPanelProps {
     onSettingsChange: (settings: AsciiSettings) => void;
     onScaleChange: (scale: number) => void;
     onReset: () => void;
+    onExport: () => void;
+    onClose?: () => void;
 }
 
 export function PropertiesPanel({
@@ -27,6 +30,8 @@ export function PropertiesPanel({
     onSettingsChange,
     onScaleChange,
     onReset,
+    onExport,
+    onClose,
 }: PropertiesPanelProps) {
 
     const presets = [
@@ -43,25 +48,38 @@ export function PropertiesPanel({
         <div className="h-full w-[280px] p-3">
             <div className=" w-full h-full flex flex-col bg-[var(--background-tertiary)] rounded-[24px] border-[1px] border-[var(--border-primary)]">
                 <div className="p-4 border-b border-[var(--border-primary)] flex justify-between items-center">
-                    <h2 className="h6 text-[var(--content-primary) flex items-center gap-2">
+                    <h2 className="h6 text-[var(--content-primary)] flex items-center gap-2">
                         <Settings2 size={24} />
                         Properties
                     </h2>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={onReset}
-                        className="h-6 w-6 text-[var(--content-secondary)] hover:text-[var(--content-primary)]"
-                        title="Reset Settings"
-                    >
-                        <RotateCcw size={16} />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={onReset}
+                            className="h-8 w-8 text-[var(--content-secondary)] hover:text-[var(--content-primary)] rounded-full hover:bg-[var(--background-secondary)]"
+                            title="Reset Settings"
+                        >
+                            <RotateCcw size={16} />
+                        </Button>
+                        {onClose && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={onClose}
+                                className="h-8 w-8 text-[var(--content-secondary)] hover:text-[var(--content-primary)] rounded-full hover:bg-[var(--background-secondary)]"
+                                title="Close Panel"
+                            >
+                                <X size={18} />
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                <div className="flex-1 overflow-y-auto p-4 space-y-6 flex flex-col">
 
                     {/* Presets */}
-                    <div className="space-y-3">
+                    <div className={`space-y-3 transition-opacity duration-200 ${settings.enabled ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
                         <Label className="text-[var(--content-secondary)]">Presets</Label>
                         <div className="grid grid-cols-2 gap-2">
                             {presets.map((preset) => (
@@ -84,77 +102,89 @@ export function PropertiesPanel({
 
                     <div className="h-[1px] bg-[var(--border-secondary)]" />
 
-                    {/* Resolution */}
+                    {/* Sliders Group */}
                     <div className="flex flex-col gap-3">
-                        <div className="flex justify-between">
-                            <Label>Resolution</Label>
-                            <span className="text-xs text-[var(--content-primary)] font-mono">{settings.resolution.toFixed(2)}</span>
+                        <div className={`transition-all duration-200 ${settings.enabled ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                            <Slider
+                                label="Resolution"
+                                value={settings.resolution}
+                                onChange={(val) => updateSetting("resolution", val)}
+                                min={0.05}
+                                max={0.5}
+                                step={0.01}
+                            />
                         </div>
                         <Slider
-                            value={[settings.resolution]}
-                            onValueChange={([val]: number[]) => updateSetting("resolution", val)}
-                            min={0.05}
-                            max={0.5}
-                            step={0.01}
-                            className="[&_.bg-primary]:bg-[var(--brand-500)] [&_.border-primary]:border-[var(--brand-500)]"
-                        />
-                    </div>
-
-                    {/* Scale */}
-                    <div className="flex flex-col gap-3">
-                        <div className="flex justify-between">
-                            <Label>Scale</Label>
-                            <span className="text-xs text-[var(--content-primary)] font-mono">{scale.toFixed(1)}x</span>
-                        </div>
-                        <Slider
-                            value={[scale]}
-                            onValueChange={([val]: number[]) => onScaleChange(val)}
+                            label="Scale"
+                            value={scale}
+                            onChange={onScaleChange}
                             min={0.1}
                             max={3}
                             step={0.1}
-                            className="[&_.bg-primary]:bg-[var(--brand-500)] [&_.border-primary]:border-[var(--brand-500)]"
+                            unit="x"
                         />
                     </div>
 
-                    <div className="h-[1px]" />
+                    <div className="h-[1px] bg-[var(--border-secondary)]" />
 
-                    {/* Color Toggles */}
-                    <div className="flex items-center justify-between">
-                        <Label htmlFor="invert" className="text-[var(--content-primary)] cursor-pointer">Invert Colors</Label>
-                        <Checkbox
-                            id="invert"
-                            checked={settings.invert}
-                            onCheckedChange={(checked: boolean) => updateSetting("invert", checked)}
-                            className="border-[var(--border-primary)] data-[state=checked]:bg-[var(--brand-500)] data-[state=checked]:border-[var(--brand-500)]"
-                        />
+                    {/* Toggles Group */}
+                    <div className="flex flex-col gap-3">
+                        <div className={`flex items-center justify-between transition-all duration-200 ${settings.enabled ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                            <Label htmlFor="invert" className="text-[var(--content-primary)] cursor-pointer">Invert Colors</Label>
+                            <Checkbox
+                                id="invert"
+                                checked={settings.invert}
+                                onCheckedChange={(checked: boolean) => updateSetting("invert", checked)}
+                                className="border-[var(--border-primary)] data-[state=checked]:bg-[var(--brand-500)] data-[state=checked]:border-[var(--brand-500)]"
+                            />
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <Label htmlFor="ascii-enabled" className="text-[var(--content-primary)] cursor-pointer">Enable ASCII</Label>
+                            <Checkbox
+                                id="ascii-enabled"
+                                checked={settings.enabled}
+                                onCheckedChange={(checked: boolean) => updateSetting("enabled", checked)}
+                                className="border-[var(--border-primary)] data-[state=checked]:bg-[var(--brand-500)] data-[state=checked]:border-[var(--brand-500)]"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="mt-auto pt-2">
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="ghost" className="w-full flex flex-row justify-start gap-2 text-[var(--content-secondary)] hover:text-[var(--content-primary)] text-xs">
+                                    <Info size={16} />
+                                    About & Credits
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="bg-[var(--background-primary)] border-[var(--border-primary)]">
+                                <DialogHeader>
+                                    <DialogTitle className="text-[var(--content-primary)]">Credits</DialogTitle>
+                                </DialogHeader>
+                                <div className="flex flex-col gap-2 text-sm text-[var(--content-secondary)] p-2">
+                                    <p>Computer model by tzeshi</p>
+                                    <p>Pothos (House Plant) by stevencmutter</p>
+                                    <p>Shiba model by zixisun02</p>
+                                    <p>Crystal model by GenEugene</p>
+
+                                    <div className="mt-4 pt-4 border-t border-[var(--border-secondary)] text-xs">
+                                        <p className="label-xs">Made by Barth</p>
+                                    </div>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </div>
 
                 {/* Footer / Credits */}
                 <div className="flex p-4 border-t border-[var(--border-primary)]">
-                    <Dialog>
-                        <DialogTrigger asChild>
-                            <Button variant="ghost" className="w-full flex flex-row justify-start gap-2 text-[var(--content-secondary)] hover:text-[var(--content-primary)] text-xs">
-                                <Info size={16} />
-                                About & Credits
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="bg-[var(--background-primary)] border-[var(--border-primary)]">
-                            <DialogHeader>
-                                <DialogTitle className="text-[var(--content-primary)]">Credits</DialogTitle>
-                            </DialogHeader>
-                            <div className="flex flex-col gap-2 text-sm text-[var(--content-secondary)] p-2">
-                                <p>Computer model by tzeshi</p>
-                                <p>Pothos (House Plant) by stevencmutter</p>
-                                <p>Shiba model by zixisun02</p>
-                                <p>Crystal model by GenEugene</p>
-
-                                <div className="mt-4 pt-4 border-t border-[var(--border-secondary)] text-xs">
-                                    <p className="label-xs">Made by Barth</p>
-                                </div>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
+                    <Button
+                        onClick={onExport}
+                        className="w-full bg-[var(--brand-500)] hover:bg-[var(--brand-600)] text-[var(--white)] rounded-[99px] py-5 flex items-center justify-center gap-2"
+                    >
+                        <Download size={18} />
+                        Export PNG
+                    </Button>
                 </div>
             </div>
         </div>

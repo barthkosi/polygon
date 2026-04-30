@@ -1,7 +1,8 @@
-import { Suspense, useState } from "react";
+import { Suspense, useState, useImperativeHandle, forwardRef, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, AsciiRenderer, useGLTF } from "@react-three/drei";
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import * as THREE from "three";
 
 interface ModelProps {
     scale: number;
@@ -62,6 +63,7 @@ function LoadingSpinner() {
 }
 
 interface AsciiSettings {
+    enabled: boolean;
     resolution: number;
     characters: string;
     fgColor: string;
@@ -76,13 +78,99 @@ interface ModelViewerProps {
     asciiSettings: AsciiSettings;
 }
 
-export function ModelViewer({
+export const ModelViewer = forwardRef<
+    { exportImage: () => void },
+    ModelViewerProps
+>(({
     selectedModel,
     modelPosition,
     scale,
     asciiSettings,
-}: ModelViewerProps) {
+}, ref) => {
     const [isLoading, setIsLoading] = useState(true);
+    const [glContext, setGlContext] = useState<THREE.WebGLRenderer | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useImperativeHandle(ref, () => ({
+        exportImage: () => {
+            // Only try ASCII export if enabled
+            if (asciiSettings.enabled) {
+                const table = containerRef.current?.querySelector("table");
+                if (table) {
+                    const td = table.querySelector("td");
+                    const container = table.parentElement;
+                    if (td && container) {
+                        const html = td.innerHTML;
+                        const lines = html.split(/<br\s*\/?>/i)
+                            .map(line => {
+                                let textLine = line.replace(/<[^>]*>/g, ''); // Remove tags
+                                textLine = textLine.replace(/&nbsp;/g, ' '); // Decode spaces
+                                textLine = textLine.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+                                return textLine;
+                            })
+                            .filter(line => line.length > 0);
+
+                        if (lines.length > 0) {
+                            const canvas = document.createElement("canvas");
+                            const ctx = canvas.getContext("2d");
+                            if (ctx) {
+                                const containerStyle = window.getComputedStyle(container);
+                                const tableStyle = window.getComputedStyle(table);
+                                const fontSize = parseFloat(tableStyle.fontSize) || 12;
+                                
+                                // Use the exact font family from the table
+                                const font = `${fontSize}px ${tableStyle.fontFamily || '"Courier New", Courier, monospace'}`;
+                                ctx.font = font;
+
+                                // Measure one character to determine grid size
+                                const metrics = ctx.measureText("M");
+                                const letterSpacing = parseFloat(tableStyle.letterSpacing) || 0;
+                                const charWidth = metrics.width + letterSpacing;
+                                const charHeight = parseFloat(tableStyle.lineHeight) || (fontSize * 1.2);
+
+                                canvas.width = charWidth * lines[0].length;
+                                canvas.height = charHeight * lines.length;
+
+                                // Fill background from container's computed style
+                                let bgColor = containerStyle.backgroundColor;
+                                if (bgColor === "rgba(0, 0, 0, 0)" || bgColor === "transparent") {
+                                    bgColor = "#000000";
+                                }
+                                ctx.fillStyle = bgColor;
+                                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                                // Configure text rendering
+                                ctx.font = font;
+                                ctx.fillStyle = containerStyle.color || "#ffffff";
+                                ctx.textBaseline = "top";
+                                if (tableStyle.letterSpacing && tableStyle.letterSpacing !== "normal") {
+                                    (ctx as any).letterSpacing = tableStyle.letterSpacing;
+                                }
+
+                                lines.forEach((line, i) => {
+                                    ctx.fillText(line, 0, i * charHeight);
+                                });
+
+                                const link = document.createElement("a");
+                                link.download = `polygon-ascii-${new Date().getTime()}.png`;
+                                link.href = canvas.toDataURL("image/png");
+                                link.click();
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Fallback to standard GL canvas capture (real view)
+            if (glContext) {
+                const link = document.createElement("a");
+                link.download = `polygon-${new Date().getTime()}.png`;
+                link.href = glContext.domElement.toDataURL("image/png");
+                link.click();
+            }
+        },
+    }));
 
     const handleModelLoaded = () => {
         setIsLoading(false);
@@ -96,13 +184,14 @@ export function ModelViewer({
     }
 
     return (
-        <div className="w-full h-full relative bg-[var(--background-model)] overflow-hidden">
+        <div ref={containerRef} className="w-full h-full relative bg-[var(--background-model)] overflow-hidden">
             {isLoading && <LoadingSpinner />}
             <ErrorBoundary>
                 <Canvas
                     camera={{ position: [0, 0, 3], fov: 50 }}
                     gl={{ preserveDrawingBuffer: true, alpha: true }}
                     onCreated={({ gl }) => {
+                        setGlContext(gl);
                         gl.setSize(gl.domElement.clientWidth, gl.domElement.clientHeight);
                     }}
                 >
@@ -120,16 +209,18 @@ export function ModelViewer({
                         />
                     </Suspense>
 
-                    <Suspense fallback={null}>
-                        <AsciiRenderer
-                            key={`${asciiSettings.resolution}-${asciiSettings.characters}-${asciiSettings.fgColor}-${asciiSettings.bgColor}-${asciiSettings.invert}`}
-                            resolution={asciiSettings.resolution}
-                            characters={asciiSettings.characters}
-                            fgColor={asciiSettings.fgColor}
-                            bgColor={asciiSettings.bgColor}
-                            invert={asciiSettings.invert}
-                        />
-                    </Suspense>
+                    {asciiSettings.enabled && (
+                        <Suspense fallback={null}>
+                            <AsciiRenderer
+                                key={`${asciiSettings.resolution}-${asciiSettings.characters}-${asciiSettings.fgColor}-${asciiSettings.bgColor}-${asciiSettings.invert}`}
+                                resolution={asciiSettings.resolution}
+                                characters={asciiSettings.characters}
+                                fgColor={asciiSettings.fgColor}
+                                bgColor={asciiSettings.bgColor}
+                                invert={asciiSettings.invert}
+                            />
+                        </Suspense>
+                    )}
 
                     <OrbitControls
                         autoRotate
@@ -142,4 +233,4 @@ export function ModelViewer({
             </ErrorBoundary>
         </div>
     );
-}
+});
