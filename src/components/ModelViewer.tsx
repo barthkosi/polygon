@@ -69,6 +69,7 @@ interface AsciiSettings {
     fgColor: string;
     bgColor: string;
     invert: boolean;
+    autoRotate: boolean;
 }
 
 interface ModelViewerProps {
@@ -235,7 +236,7 @@ export const ModelViewer = forwardRef<
                     )}
 
                     <OrbitControls
-                        autoRotate
+                        autoRotate={asciiSettings.autoRotate}
                         autoRotateSpeed={2}
                         enablePan
                         enableZoom

@@ -12,6 +12,7 @@ interface AsciiSettings {
     fgColor: string;
     bgColor: string;
     invert: boolean;
+    autoRotate: boolean;
 }
 
 interface PropertiesPanelProps {
@@ -135,6 +136,15 @@ export function PropertiesPanel({
                                 id="invert"
                                 checked={settings.invert}
                                 onCheckedChange={(checked: boolean) => updateSetting("invert", checked)}
+                                className="border-[var(--border-primary)] data-[state=checked]:bg-[var(--brand-500)] data-[state=checked]:border-[var(--brand-500)]"
+                            />
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <Label htmlFor="auto-rotate" className="text-[var(--content-primary)] cursor-pointer">Auto Rotate</Label>
+                            <Checkbox
+                                id="auto-rotate"
+                                checked={settings.autoRotate}
+                                onCheckedChange={(checked: boolean) => updateSetting("autoRotate", checked)}
                                 className="border-[var(--border-primary)] data-[state=checked]:bg-[var(--brand-500)] data-[state=checked]:border-[var(--brand-500)]"
                             />
                         </div>

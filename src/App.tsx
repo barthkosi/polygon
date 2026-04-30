@@ -67,6 +67,7 @@ export default function App() {
     fgColor: "#ffffff",
     bgColor: "transparent",
     invert: false,
+    autoRotate: true,
   });
 
   const resetSettings = () => {
@@ -77,6 +78,7 @@ export default function App() {
       fgColor: "#ffffff",
       bgColor: "transparent",
       invert: false,
+      autoRotate: true,
     });
     setUserScale(1);
   };
