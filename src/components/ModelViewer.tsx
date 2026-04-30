@@ -1,9 +1,8 @@
-import { Suspense, useState, useImperativeHandle, forwardRef, useRef, useCallback } from "react";
+import { Suspense, useState, useImperativeHandle, forwardRef, useRef, useCallback, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, AsciiRenderer, useGLTF } from "@react-three/drei";
 import { ErrorBoundary } from "./ErrorBoundary";
 import type { AsciiSettings } from "../lib/types";
-import type * as THREE from "three";
 
 interface ModelProps {
   scale: number;
@@ -14,10 +13,15 @@ interface ModelProps {
 
 function Model({ scale, modelUrl, position, onLoaded }: ModelProps) {
   const { scene } = useGLTF(modelUrl);
-  // Notify parent that loading is complete via effect-safe callback
-  // Note: useGLTF suspends until the model is loaded, so reaching this
-  // render means the model is ready.
-  onLoaded();
+
+  // Fire after commit so the loading spinner is visible until the model
+  // is actually painted. Calling onLoaded during render let React 18
+  // batch it with setIsLoading(true) from the parent, causing the
+  // spinner to never appear for cached models.
+  useEffect(() => {
+    onLoaded();
+  }, [onLoaded]);
+
   return <primitive object={scene} scale={scale} position={position} />;
 }
 
