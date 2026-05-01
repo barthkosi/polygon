@@ -1,7 +1,7 @@
 
-  # 3D ASCII Model Viewer
+  # Polygon
 
-  This is a code bundle for 3D ASCII Model Viewer. The original project is available at https://www.figma.com/design/vImob7UoCJZkJsHi7p5ADG/3D-ASCII-Model-Viewer.
+  This is a code bundle for Polygon. The original project is available at https://www.figma.com/design/vImob7UoCJZkJsHi7p5ADG/3D-ASCII-Model-Viewer.
 
   ## Running the code
 

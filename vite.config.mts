@@ -13,8 +13,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
       manifest: {
-        name: '3D ASCII Model Viewer',
-        short_name: 'ASCII Viewer',
+        name: 'Polygon',
+        short_name: 'Polygon',
         description: 'View and render 3D models as interactive ASCII art',
         theme_color: '#0a0a0f',
         background_color: '#0a0a0f',
