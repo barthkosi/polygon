@@ -1,6 +1,4 @@
-
-
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo, memo } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'motion/react';
 import { pressScale } from '../../lib/transitions';
 
@@ -20,29 +18,265 @@ const DEAD_ZONE = 32;
 const MAX_CURSOR_RANGE = 200;
 const MAX_STRETCH = 8;
 
-/** Number of decimals that match the step precision */
+// --- Helper Functions ---
+
 function decimalsForStep(step: number): number {
   const s = step.toString();
   const dot = s.indexOf('.');
   return dot === -1 ? 0 : s.length - dot - 1;
 }
 
-/** Round a value to the given step precision */
 function roundValue(value: number, step: number): number {
   const d = decimalsForStep(step);
   return parseFloat(value.toFixed(d));
 }
 
-/** Snap a value to the nearest decile (10% boundary) with a magnetic zone */
 function snapToDecile(value: number, min: number, max: number): number {
   const range = max - min;
   const norm = (value - min) / range;
   const decile = Math.round(norm * 10) / 10;
   const snapped = min + decile * range;
-  // Only snap if close enough
   if (Math.abs(norm - decile) < 0.03) return snapped;
   return value;
 }
+
+// --- Sub-components ---
+
+const HashMarks = memo(({ min, max, step }: { min: number; max: number; step: number }) => {
+  const discreteSteps = (max - min) / step;
+  const marks = useMemo(() => {
+    if (discreteSteps <= 10) {
+      return Array.from({ length: Math.floor(discreteSteps) - 1 }, (_, i) => {
+        const pct = ((i + 1) * step) / (max - min) * 100;
+        return <div key={i} className="dialkit-slider-hashmark" style={{ left: `${pct}%` }} />;
+      });
+    }
+    return Array.from({ length: 9 }, (_, i) => {
+      const pct = (i + 1) * 10;
+      return <div key={i} className="dialkit-slider-hashmark" style={{ left: `${pct}%` }} />;
+    });
+  }, [discreteSteps, min, max, step]);
+
+  return <div className="dialkit-slider-hashmarks">{marks}</div>;
+});
+
+HashMarks.displayName = 'HashMarks';
+
+// --- Custom Hooks ---
+
+function useSliderInteraction({
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (v: number) => void;
+}) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [isInteracting, setIsInteracting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
+  const isClickRef = useRef(true);
+  const animRef = useRef<any>(null);
+  const measurementsRef = useRef<{ rect: DOMRect; scale: number } | null>(null);
+
+  const percentage = ((value - min) / (max - min)) * 100;
+  const fillPercent = useMotionValue(percentage);
+  const rubberStretchPx = useMotionValue(0);
+
+  // Sync motion value with prop
+  useEffect(() => {
+    if (!isInteracting && !animRef.current) {
+      fillPercent.jump(percentage);
+    }
+  }, [percentage, isInteracting, fillPercent]);
+
+  const getPositionValue = useCallback((clientX: number) => {
+    if (!measurementsRef.current) return value;
+    const { rect, scale } = measurementsRef.current;
+    const screenX = clientX - rect.left;
+    const sceneX = screenX / scale;
+    const nativeWidth = wrapperRef.current?.offsetWidth || rect.width;
+    const percent = Math.max(0, Math.min(1, sceneX / nativeWidth));
+    return min + percent * (max - min);
+  }, [min, max, value]);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    pointerDownPos.current = { x: e.clientX, y: e.clientY };
+    isClickRef.current = true;
+    setIsInteracting(true);
+
+    if (wrapperRef.current) {
+      const rect = wrapperRef.current.getBoundingClientRect();
+      measurementsRef.current = {
+        rect,
+        scale: rect.width / wrapperRef.current.offsetWidth,
+      };
+    }
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!pointerDownPos.current) return;
+
+    const dx = e.clientX - pointerDownPos.current.x;
+    const dy = e.clientY - pointerDownPos.current.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (isClickRef.current && distance > CLICK_THRESHOLD) {
+      isClickRef.current = false;
+      setIsDragging(true);
+    }
+
+    if (!isClickRef.current) {
+      const measurements = measurementsRef.current;
+      if (measurements) {
+        const { rect } = measurements;
+        if (e.clientX < rect.left) {
+          const overflow = Math.max(0, rect.left - e.clientX - DEAD_ZONE);
+          rubberStretchPx.jump(-MAX_STRETCH * Math.sqrt(Math.min(overflow / MAX_CURSOR_RANGE, 1.0)));
+        } else if (e.clientX > rect.right) {
+          const overflow = Math.max(0, e.clientX - rect.right - DEAD_ZONE);
+          rubberStretchPx.jump(MAX_STRETCH * Math.sqrt(Math.min(overflow / MAX_CURSOR_RANGE, 1.0)));
+        } else {
+          rubberStretchPx.jump(0);
+        }
+      }
+
+      const newValue = getPositionValue(e.clientX);
+      const newPct = ((newValue - min) / (max - min)) * 100;
+      
+      if (animRef.current) {
+        animRef.current.stop();
+        animRef.current = null;
+      }
+      fillPercent.jump(newPct);
+      onChange(roundValue(newValue, step));
+    }
+  }, [min, max, step, onChange, fillPercent, rubberStretchPx, getPositionValue]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!pointerDownPos.current) return;
+
+    if (isClickRef.current) {
+      const rawValue = getPositionValue(e.clientX);
+      const discreteSteps = (max - min) / step;
+      const snappedValue = discreteSteps <= 10
+        ? Math.max(min, Math.min(max, min + Math.round((rawValue - min) / step) * step))
+        : snapToDecile(rawValue, min, max);
+
+      const newPct = ((snappedValue - min) / (max - min)) * 100;
+
+      if (animRef.current) animRef.current.stop();
+      animRef.current = animate(fillPercent, newPct, {
+        type: 'spring',
+        stiffness: 300,
+        damping: 25,
+        mass: 0.8,
+        onComplete: () => { animRef.current = null; },
+      });
+      onChange(roundValue(snappedValue, step));
+    }
+
+    if (rubberStretchPx.get() !== 0) {
+      animate(rubberStretchPx, 0, { type: 'spring', visualDuration: 0.35, bounce: 0.15 });
+    }
+
+    setIsInteracting(false);
+    setIsDragging(false);
+    pointerDownPos.current = null;
+  }, [min, max, step, onChange, fillPercent, rubberStretchPx, getPositionValue]);
+
+  return {
+    wrapperRef,
+    isInteracting,
+    isDragging,
+    isHovered,
+    fillPercent,
+    rubberStretchPx,
+    handlers: {
+      onPointerDown: handlePointerDown,
+      onPointerMove: handlePointerMove,
+      onPointerUp: handlePointerUp,
+      onMouseEnter: () => setIsHovered(true),
+      onMouseLeave: () => setIsHovered(false),
+    }
+  };
+}
+
+function useEditableValue({
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  min: number;
+  max: number;
+  step: number;
+  onChange: (v: number) => void;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isEditable, setIsEditable] = useState(false);
+  const [showInput, setShowInput] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (isHovered && !showInput && !isEditable) {
+      hoverTimeoutRef.current = setTimeout(() => setIsEditable(true), 800);
+    } else if (!isHovered && !showInput) {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      setIsEditable(false);
+    }
+    return () => { if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current); };
+  }, [isHovered, showInput, isEditable]);
+
+  useEffect(() => {
+    if (showInput && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [showInput]);
+
+  const submit = useCallback(() => {
+    const parsed = parseFloat(inputValue);
+    if (!isNaN(parsed)) {
+      onChange(roundValue(Math.max(min, Math.min(max, parsed)), step));
+    }
+    setShowInput(false);
+    setIsHovered(false);
+    setIsEditable(false);
+  }, [inputValue, min, max, step, onChange]);
+
+  return {
+    showInput,
+    isEditable,
+    inputValue,
+    inputRef,
+    setInputValue,
+    setShowInput,
+    setIsHovered,
+    inputHandlers: {
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => setInputValue(e.target.value),
+      onKeyDown: (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') submit();
+        else if (e.key === 'Escape') setShowInput(false);
+      },
+      onBlur: submit,
+    }
+  };
+}
+
+// --- Main Component ---
 
 export function Slider({
   label,
@@ -54,355 +288,70 @@ export function Slider({
   unit,
   className,
 }: SliderProps) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
   const valueSpanRef = useRef<HTMLSpanElement>(null);
-  const [isInteracting, setIsInteracting] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const [isValueHovered, setIsValueHovered] = useState(false);
-  const [isValueEditable, setIsValueEditable] = useState(false);
-  const [showInput, setShowInput] = useState(false);
-  const [inputValue, setInputValue] = useState('');
-  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Click-vs-drag detection refs
-  const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
-  const isClickRef = useRef(true);
-  const animRef = useRef<ReturnType<typeof animate> | null>(null);
-  const wrapperRectRef = useRef<DOMRect | null>(null);
-  const scaleRef = useRef(1);
+  const {
+    wrapperRef,
+    isInteracting,
+    isDragging,
+    isHovered,
+    fillPercent,
+    rubberStretchPx,
+    handlers
+  } = useSliderInteraction({ value, min, max, step, onChange });
 
-  const percentage = ((value - min) / (max - min)) * 100;
+  const {
+    showInput,
+    isEditable,
+    inputValue,
+    inputRef,
+    setInputValue,
+    setShowInput,
+    setIsHovered: setIsValueHovered,
+    inputHandlers
+  } = useEditableValue({ min, max, step, onChange });
+
   const isActive = isInteracting || isHovered;
+  const percentage = ((value - min) / (max - min)) * 100;
 
-  // Motion values for imperative animation
-  const fillPercent = useMotionValue(percentage);
   const fillWidth = useTransform(fillPercent, (pct) => `${pct}%`);
-  const handleLeft = useTransform(fillPercent, (pct) =>
-    `max(5px, calc(${pct}% - 9px))`
-  );
+  const handleLeft = useTransform(fillPercent, (pct) => `max(5px, calc(${pct}% - 9px))`);
+  const rubberBandWidth = useTransform(rubberStretchPx, (stretch) => `calc(100% + ${Math.abs(stretch)}px)`);
+  const rubberBandX = useTransform(rubberStretchPx, (stretch) => (stretch < 0 ? stretch : 0));
 
-  // Rubber band motion values
-  const rubberStretchPx = useMotionValue(0);
-  const rubberBandWidth = useTransform(
-    rubberStretchPx,
-    (stretch) => `calc(100% + ${Math.abs(stretch)}px)`
-  );
-  const rubberBandX = useTransform(
-    rubberStretchPx,
-    (stretch) => (stretch < 0 ? stretch : 0)
-  );
-
-  // Sync from props when not interacting (skip if spring animation is active)
-  useEffect(() => {
-    if (!isInteracting && !animRef.current) {
-      fillPercent.jump(percentage);
-    }
-  }, [percentage, isInteracting, fillPercent]);
-
-  const positionToValue = useCallback(
-    (clientX: number) => {
-      const rect = wrapperRectRef.current;
-      if (!rect) return value;
-      const screenX = clientX - rect.left;
-      const sceneX = screenX / scaleRef.current;
-      const nativeWidth = wrapperRef.current ? wrapperRef.current.offsetWidth : rect.width;
-      const percent = Math.max(0, Math.min(1, sceneX / nativeWidth));
-      const rawValue = min + percent * (max - min);
-      return Math.max(min, Math.min(max, rawValue));
-    },
-    [min, max, value]
-  );
-
-  const percentFromValue = useCallback(
-    (v: number) => ((v - min) / (max - min)) * 100,
-    [min, max]
-  );
-
-  const computeRubberStretch = useCallback(
-    (clientX: number, sign: number) => {
-      const rect = wrapperRectRef.current;
-      if (!rect) return 0;
-      const distancePast =
-        sign < 0 ? rect.left - clientX : clientX - rect.right;
-      const overflow = Math.max(0, distancePast - DEAD_ZONE);
-      return (
-        sign *
-        MAX_STRETCH *
-        Math.sqrt(Math.min(overflow / MAX_CURSOR_RANGE, 1.0))
-      );
-    },
-    []
-  );
-
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      if (showInput) return;
-      e.preventDefault();
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      pointerDownPos.current = { x: e.clientX, y: e.clientY };
-      isClickRef.current = true;
-      setIsInteracting(true);
-
-      // Capture wrapper rect at pointer down for stable reference
-      if (wrapperRef.current) {
-        wrapperRectRef.current = wrapperRef.current.getBoundingClientRect();
-        const nativeWidth = wrapperRef.current.offsetWidth;
-        scaleRef.current = wrapperRectRef.current.width / nativeWidth;
-      }
-    },
-    [showInput]
-  );
-
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!isInteracting || !pointerDownPos.current) return;
-
-      const dx = e.clientX - pointerDownPos.current.x;
-      const dy = e.clientY - pointerDownPos.current.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      if (isClickRef.current && distance > CLICK_THRESHOLD) {
-        isClickRef.current = false;
-        setIsDragging(true);
-      }
-
-      if (!isClickRef.current) {
-        // Drag mode — instant update
-        const rect = wrapperRectRef.current;
-        if (rect) {
-          if (e.clientX < rect.left) {
-            rubberStretchPx.jump(computeRubberStretch(e.clientX, -1));
-          } else if (e.clientX > rect.right) {
-            rubberStretchPx.jump(computeRubberStretch(e.clientX, 1));
-          } else {
-            rubberStretchPx.jump(0);
-          }
-        }
-
-        const newValue = positionToValue(e.clientX);
-        const newPct = percentFromValue(newValue);
-        if (animRef.current) {
-          animRef.current.stop();
-          animRef.current = null;
-        }
-        fillPercent.jump(newPct);
-        onChange(roundValue(newValue, step));
-      }
-    },
-    [
-      isInteracting,
-      positionToValue,
-      percentFromValue,
-      onChange,
-      fillPercent,
-      rubberStretchPx,
-      computeRubberStretch,
-      step,
-    ]
-  );
-
-  const handlePointerUp = useCallback(
-    (e: React.PointerEvent) => {
-      if (!isInteracting) return;
-
-      if (isClickRef.current) {
-        // When steps are coarse (≤10 positions), click snaps to the nearest step.
-        // Otherwise, the original decile-magnetic behavior is preserved
-        const rawValue = positionToValue(e.clientX);
-        const discreteSteps = (max - min) / step;
-        const snappedValue = discreteSteps <= 10
-          ? Math.max(min, Math.min(max, min + Math.round((rawValue - min) / step) * step))
-          : snapToDecile(rawValue, min, max);
-
-        const newPct = percentFromValue(snappedValue);
-
-        if (animRef.current) {
-          animRef.current.stop();
-        }
-        animRef.current = animate(fillPercent, newPct, {
-          type: 'spring',
-          stiffness: 300,
-          damping: 25,
-          mass: 0.8,
-          onComplete: () => { animRef.current = null; },
-        });
-        onChange(roundValue(snappedValue, step));
-      }
-
-      // Spring rubber band back
-      if (rubberStretchPx.get() !== 0) {
-        animate(rubberStretchPx, 0, {
-          type: 'spring',
-          visualDuration: 0.35,
-          bounce: 0.15,
-        });
-      }
-
-      setIsInteracting(false);
-      setIsDragging(false);
-      pointerDownPos.current = null;
-    },
-    [
-      isInteracting,
-      positionToValue,
-      percentFromValue,
-      onChange,
-      min,
-      max,
-      step,
-      fillPercent,
-      rubberStretchPx,
-    ]
-  );
-
-  // Handle value hover delay for editable state
-  useEffect(() => {
-    if (isValueHovered && !showInput && !isValueEditable) {
-      hoverTimeoutRef.current = setTimeout(() => {
-        setIsValueEditable(true);
-      }, 800);
-    } else if (!isValueHovered && !showInput) {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-        hoverTimeoutRef.current = null;
-      }
-      setIsValueEditable(false);
-    }
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
+  const thresholds = useMemo(() => {
+    const trackWidth = wrapperRef.current?.offsetWidth || 280;
+    const labelWidth = labelRef.current?.offsetWidth || 0;
+    const valueWidth = valueSpanRef.current?.offsetWidth || 0;
+    const buffer = 8;
+    return {
+      left: ((10 + labelWidth + buffer) / trackWidth) * 100,
+      right: ((trackWidth - 10 - valueWidth - buffer) / trackWidth) * 100
     };
-  }, [isValueHovered, showInput, isValueEditable]);
+  }, [isActive]); // Recalculate only when interaction state changes (measurements stable then)
 
-  // Focus input when it appears
-  useEffect(() => {
-    if (showInput && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [showInput]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
-  };
-
-  const handleInputSubmit = () => {
-    const parsed = parseFloat(inputValue);
-    if (!isNaN(parsed)) {
-      const clamped = Math.max(min, Math.min(max, parsed));
-      onChange(roundValue(clamped, step));
-    }
-    setShowInput(false);
-    setIsValueHovered(false);
-    setIsValueEditable(false);
-  };
-
-  const handleValueClick = (e: React.MouseEvent) => {
-    if (isValueEditable) {
-      e.stopPropagation();
-      e.preventDefault();
-      setShowInput(true);
-      setInputValue(value.toFixed(decimalsForStep(step)));
-    }
-  };
-
-  const handleInputKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleInputSubmit();
-    } else if (e.key === 'Escape') {
-      setShowInput(false);
-      setIsValueHovered(false);
-    }
-  };
-
-  const handleInputBlur = () => {
-    handleInputSubmit();
-  };
-
-  const displayValue = value.toFixed(decimalsForStep(step));
-
-  // Handle opacity: not active → 0, active → 0.5, dragging → 0.9
-  // Value dodge: fade when handle overlaps label (left) or value (right)
-  const HANDLE_BUFFER = 8;
-  const LABEL_CSS_LEFT = 10;
-  const VALUE_CSS_RIGHT = 10;
-  let leftThreshold = 30;
-  let rightThreshold = 78;
-  const trackWidth = wrapperRef.current?.offsetWidth;
-  if (trackWidth && trackWidth > 0) {
-    if (labelRef.current) {
-      leftThreshold = ((LABEL_CSS_LEFT + labelRef.current.offsetWidth + HANDLE_BUFFER) / trackWidth) * 100;
-    }
-    if (valueSpanRef.current) {
-      rightThreshold = ((trackWidth - VALUE_CSS_RIGHT - valueSpanRef.current.offsetWidth - HANDLE_BUFFER) / trackWidth) * 100;
-    }
-  }
-  const valueDodge = percentage < leftThreshold || percentage > rightThreshold;
-  const handleOpacity = !isActive
-    ? 0
-    : valueDodge
-      ? 0.1
-      : isDragging
-        ? 0.9
-        : 0.5;
-
-  // The ≤ 10 threshold separates discrete sliders
-  // (like step=2 on a 0–10 range → 5 steps) from continuous ones.
-  const discreteSteps = (max - min) / step;
-  const hashMarks = discreteSteps <= 10
-    ? Array.from({ length: discreteSteps - 1 }, (_, i) => {
-        const pct = ((i + 1) * step) / (max - min) * 100;
-        return (
-          <div
-            key={i}
-            className="dialkit-slider-hashmark"
-            style={{ left: `${pct}%` }}
-          />
-        );
-      })
-    : Array.from({ length: 9 }, (_, i) => {
-        const pct = (i + 1) * 10;
-        return (
-          <div
-            key={i}
-            className="dialkit-slider-hashmark"
-            style={{ left: `${pct}%` }}
-          />
-        );
-      });
+  const valueDodge = percentage < thresholds.left || percentage > thresholds.right;
+  const handleOpacity = !isActive ? 0 : valueDodge ? 0.1 : isDragging ? 0.9 : 0.5;
 
   return (
     <div ref={wrapperRef} className={`dialkit-slider-wrapper ${className || ''}`}>
       <motion.div
-        ref={trackRef}
         className={`dialkit-slider ${isActive ? 'dialkit-slider-active' : ''}`}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        style={{ width: rubberBandWidth, x: rubberBandX }}
+        {...handlers}
+        style={{ 
+          width: rubberBandWidth, 
+          x: rubberBandX,
+          cursor: isDragging ? 'grabbing' : 'grab'
+        }}
       >
-        <div className="dialkit-slider-hashmarks">{hashMarks}</div>
+        <HashMarks min={min} max={max} step={step} />
 
-        <motion.div
-          className="dialkit-slider-fill"
-          style={{
-            width: fillWidth,
-          }}
-        />
+        <motion.div className="dialkit-slider-fill" style={{ width: fillWidth }} />
 
         <motion.div
           className="dialkit-slider-handle"
-          style={{
-            left: handleLeft,
-            y: '-50%',
-          }}
+          style={{ left: handleLeft, y: '-50%' }}
           animate={{
             opacity: handleOpacity,
             scaleX: isActive ? 1 : 0.25,
@@ -415,13 +364,9 @@ export function Slider({
           }}
         />
 
-        <motion.span 
-          ref={labelRef} 
-          className="dialkit-slider-label"
-          style={{ y: 'calc(-50% - 0.5px)' }}
-        >
+        <span ref={labelRef} className="dialkit-slider-label" style={{ pointerEvents: 'none' }}>
           {label}
-        </motion.span>
+        </span>
 
         {showInput ? (
           <input
@@ -429,9 +374,7 @@ export function Slider({
             type="text"
             className="dialkit-slider-input"
             value={inputValue}
-            onChange={handleInputChange}
-            onKeyDown={handleInputKeyDown}
-            onBlur={handleInputBlur}
+            {...inputHandlers}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
           />
@@ -439,17 +382,23 @@ export function Slider({
           <motion.span
             {...pressScale}
             ref={valueSpanRef}
-            className={`dialkit-slider-value ${isValueEditable ? 'dialkit-slider-value-editable' : ''}`}
+            className={`dialkit-slider-value ${isEditable ? 'dialkit-slider-value-editable' : ''}`}
             onMouseEnter={() => setIsValueHovered(true)}
             onMouseLeave={() => setIsValueHovered(false)}
-            onClick={handleValueClick}
-            onMouseDown={(e) => isValueEditable && e.stopPropagation()}
+            onClick={(e) => {
+              if (isEditable) {
+                e.stopPropagation();
+                setShowInput(true);
+                setInputValue(value.toFixed(decimalsForStep(step)));
+              }
+            }}
+            onMouseDown={(e) => isEditable && e.stopPropagation()}
             style={{ 
-              cursor: isValueEditable ? 'text' : 'default',
+              cursor: isEditable ? 'grabbing' : 'default',
               y: 'calc(-50% + 0.5px)'
             }}
           >
-            {displayValue}{unit ? unit : ''}
+            {value.toFixed(decimalsForStep(step))}{unit ?? ''}
           </motion.span>
         )}
       </motion.div>
