@@ -1,0 +1,11 @@
+{
+  // Vite SPA: `npm run build` outputs to ./dist, served as static assets
+  "name": "polygon",
+  "compatibility_date": "2026-10-19",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  // Required for branch preview builds (`npx wrangler preview`); empty is fine
+  "previews": {}
+}
