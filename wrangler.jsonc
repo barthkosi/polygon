@@ -2,6 +2,10 @@
   // Vite SPA: `npm run build` outputs to ./dist, served as static assets
   "name": "polygon",
   "compatibility_date": "2026-10-19",
+  // Wrangler runs this before deploy/preview, so ./dist always exists
+  "build": {
+    "command": "npm run build"
+  },
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"
